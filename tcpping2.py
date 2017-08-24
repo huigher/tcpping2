@@ -111,6 +111,7 @@ def go(dst_host, dst_port, timeout, interval, src_host=None, src_port=None, coun
         if len(str(err)) > 0:
             error_flag = True
             output.append('ERROR: ' + str(err))
+            err=''
 
         final_output = ', '.join(output)
         print final_output
@@ -184,13 +185,10 @@ if __name__ == '__main__':
     args = getargs()
     initial(args)
     if judge_args(args):
-        if args.version:
-            print get_version()
-        else:
-            go(args.dst_host[0], args.dst_port[0], timeout=args.timeout if args.timeout else 10,
-               interval=args.interval if args.interval else 3,
-               src_host=args.src_host if args.src_host else None, src_port=args.src_port if args.src_port else 0,
-               src_rotate_port=args.src_rotate_port if args.src_rotate_port else None, rst=args.rst if args.rst else None,
-               count=args.count if args.count else None)
+        go(args.dst_host[0], args.dst_port[0], timeout=args.timeout if args.timeout else 10,
+           interval=args.interval if args.interval else 3,
+           src_host=args.src_host if args.src_host else None, src_port=args.src_port if args.src_port else 0,
+           src_rotate_port=args.src_rotate_port if args.src_rotate_port else None, rst=args.rst if args.rst else None,
+           count=args.count if args.count else None)
     else:
         pass
