@@ -8,7 +8,8 @@ import struct
 import logging
 from datetime import datetime
 
-__VERSION__='0.1.0'
+__VERSION__ = '0.1.0'
+
 
 def current_time():
     t = datetime.fromtimestamp(time.time())
@@ -27,7 +28,7 @@ def conn_tcp(dst_host, dst_port, timeout, src_host=None, src_port=None, rst=Fals
     :param timeout: wait TIMEOUT second in connection period
     :return: (conn_time, close_time, err),connection time,close time and error message
     """
-    (t1, t2, t3, te, conn_time, close_time, err,local_addr) = (-1, -1, -1, -1, -1, -1, '',None)
+    (t1, t2, t3, te, conn_time, close_time, err, local_addr) = (-1, -1, -1, -1, -1, -1, '', None)
     # 若指定了RST参数，那么开始设定相关参数
     if rst:
         l_onoff = 1
@@ -44,12 +45,12 @@ def conn_tcp(dst_host, dst_port, timeout, src_host=None, src_port=None, rst=Fals
         t1 = time.time()
         s.settimeout(timeout)
         s.connect((dst_host, int(dst_port)))
-        local_addr=s.getsockname()
+        local_addr = s.getsockname()
         t2 = time.time()
         s.close()
         t3 = time.time()
     except Exception, e:
-        local_addr=s.getsockname()
+        local_addr = s.getsockname()
         err = e
         te = time.time()
     finally:
@@ -96,13 +97,13 @@ def go(dst_host, dst_port, timeout, interval, src_host=None, src_port=None, coun
         src_port = src_rotate_port
 
     while judge_count(count):
-        (conn_time, close_time, err,local_addr) = conn_tcp(dst_host, dst_port, timeout=timeout, src_host=src_host,
-                                                src_port=src_port, rst=rst)
+        (conn_time, close_time, err, local_addr) = conn_tcp(dst_host, dst_port, timeout=timeout, src_host=src_host,
+                                                            src_port=src_port, rst=rst)
         # 初始化存放输出信息的列表
         output = list()
         if local_addr:
-            output.append(local_addr[0]+':'+str(local_addr[1]))
-        output.append(dst_host+':'+str(dst_port))
+            output.append(local_addr[0] + ':' + str(local_addr[1]))
+        output.append(dst_host + ':' + str(dst_port))
         if conn_time >= 0:
             output.append('conn_time: ' + str('%.6f' % conn_time))
         if close_time >= 0:
@@ -111,7 +112,6 @@ def go(dst_host, dst_port, timeout, interval, src_host=None, src_port=None, coun
         if len(str(err)) > 0:
             error_flag = True
             output.append('ERROR: ' + str(err))
-            err=''
 
         final_output = ', '.join(output)
         print final_output
@@ -120,14 +120,18 @@ def go(dst_host, dst_port, timeout, interval, src_host=None, src_port=None, coun
         else:
             logging.info(final_output)
 
+        # 清除错误标志，执行本次循环的收尾工作
+        err = ''
+        error_flag = False
         del output
 
         # 检查是否需要源端口自增
         if src_rotate_port:
             src_port += 1
         if src_port >= 65536:
-            print 'reach 65535,reset src port to 1024'
-            logging.warning('reach 65535,reset src port to 1024')
+            tip_reach_65535 = 'Local port reach 65535,reset src port to 1024.'
+            print tip_reach_65535
+            logging.warning(tip_reach_65535)
             src_port = 1024
 
         # 若有 count，自减1
@@ -142,7 +146,7 @@ def initial(arguments):
     # 开启log记录
     logging.basicConfig(level=logging.DEBUG,
                         format='%(levelname)s: %(asctime)s - %(filename)s[line:%(lineno)d] -  %(message)s',
-                        filename='tcpping2_'+arguments.dst_host[0]+'_'+str(arguments.dst_port[0])+'.log',
+                        filename='tcpping2_' + arguments.dst_host[0] + '_' + str(arguments.dst_port[0]) + '.log',
                         filemode='w')
 
 
@@ -155,7 +159,7 @@ def getargs():
     tcpping2.py 192.168.1.25 80"""
     parser = argparse.ArgumentParser(
         prog='tcpping2',
-        description='A tiny tool to connect target using TCP Connection. Version:'+__VERSION__,
+        description='A tiny tool to connect target using TCP Connection. Version:' + __VERSION__,
         epilog=tail_str)
 
     # 本地IP地址
