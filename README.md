@@ -67,4 +67,4 @@ examples: tcpping2.py 192.168.1.25 80
 https://github.com/huigher/tcpping2
 
 # 最后
-脚本编写仓促，难免会有bug或不妥的地方，各位如有建议、吐槽，欢迎钉钉联系我：）
+脚本编写仓促，难免会有bug或不妥的地方，各位如有建议、吐槽，欢迎联系我：）
