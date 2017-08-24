@@ -136,11 +136,11 @@ def go(dst_host, dst_port, timeout, interval, src_host=None, src_port=None, coun
         time.sleep(interval)
 
 
-def initial():
+def initial(arguments):
     # 开启log记录
     logging.basicConfig(level=logging.DEBUG,
                         format='%(levelname)s: %(asctime)s - %(filename)s[line:%(lineno)d] -  %(message)s',
-                        filename='tcpping2.log',
+                        filename='tcpping2_'+arguments.dst_host[0]+'_'+str(arguments.dst_port[0])+'.log',
                         filemode='w')
 
 
@@ -176,8 +176,8 @@ def getargs():
 
 
 if __name__ == '__main__':
-    initial()
     args = getargs()
+    initial(args)
     if judge_args(args):
         go(args.dst_host[0], args.dst_port[0], timeout=args.timeout if args.timeout else 10,
            interval=args.interval if args.interval else 3,
