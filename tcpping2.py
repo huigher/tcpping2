@@ -8,6 +8,7 @@ import struct
 import logging
 from datetime import datetime
 
+__VERSION__='0.1.0'
 
 def current_time():
     t = datetime.fromtimestamp(time.time())
@@ -144,12 +145,16 @@ def initial(arguments):
                         filemode='w')
 
 
+def get_version():
+    return __VERSION__
+
+
 def getargs():
     tail_str = """examples:
     tcpping2.py 192.168.1.25 80"""
     parser = argparse.ArgumentParser(
         prog='tcpping2',
-        description='A tiny tool to connect target using TCP Connection.',
+        description='A tiny tool to connect target using TCP Connection. Version:'+__VERSION__,
         epilog=tail_str)
 
     # 本地IP地址
@@ -179,10 +184,13 @@ if __name__ == '__main__':
     args = getargs()
     initial(args)
     if judge_args(args):
-        go(args.dst_host[0], args.dst_port[0], timeout=args.timeout if args.timeout else 10,
-           interval=args.interval if args.interval else 3,
-           src_host=args.src_host if args.src_host else None, src_port=args.src_port if args.src_port else 0,
-           src_rotate_port=args.src_rotate_port if args.src_rotate_port else None, rst=args.rst if args.rst else None,
-           count=args.count if args.count else None)
+        if args.version:
+            print get_version()
+        else:
+            go(args.dst_host[0], args.dst_port[0], timeout=args.timeout if args.timeout else 10,
+               interval=args.interval if args.interval else 3,
+               src_host=args.src_host if args.src_host else None, src_port=args.src_port if args.src_port else 0,
+               src_rotate_port=args.src_rotate_port if args.src_rotate_port else None, rst=args.rst if args.rst else None,
+               count=args.count if args.count else None)
     else:
         pass
