@@ -10,7 +10,7 @@ import logging.handlers
 import signal
 from datetime import datetime
 
-__VERSION__ = '0.1.0'
+__VERSION__ = '0.2.0'
 
 
 def current_time():
@@ -93,7 +93,7 @@ def judge_args(argument):
         return True
 
 
-def go(dst_host, dst_port, timeout, interval, src_host=None, src_port=None, count=None, src_rotate_port=None, rst=False,
+def go(dst_host, dst_port, timeout, interval, src_host=None, src_port=None, count=None, src_rotate_port=None, rst=False,log_to_file=False
        ):
     error_flag = False
     if src_rotate_port:
@@ -170,24 +170,27 @@ def getargs():
         epilog=tail_str)
 
     # 本地IP地址
-    parser.add_argument('-H', '--src-host', dest='src_host', help='set local IP', type=str)
+    parser.add_argument('-H', '--src-host', dest='src_host', help='Set local IP', type=str)
     # 本地源端口
-    parser.add_argument('-P', '--src-port', dest='src_port', help="set local port", type=int)
+    parser.add_argument('-P', '--src-port', dest='src_port', help="Set local port", type=int)
     # 本地源端口，自增的进行连接，一般用来地毯式的查找本地有问题的源端口
-    parser.add_argument('-L', '--src-rotate-port', dest='src_rotate_port', help="set local port(rotate)", type=int)
+    parser.add_argument('-L', '--src-rotate-port', dest='src_rotate_port', help="Set local port(rotate)", type=int)
     # 连接间隔
-    parser.add_argument('-i', '--interval', dest='interval', help="set connection interval(second)", type=float)
+    parser.add_argument('-i', '--interval', dest='interval', help="Set connection interval(second),default==2", type=float)
     # 连接超时时间
-    parser.add_argument('-t', '--timeout', dest='timeout', help="set timeout(second)", type=float)
+    parser.add_argument('-t', '--timeout', dest='timeout', help="Set timeout(second),default==5", type=float)
     # 总的连接次数
     parser.add_argument('-c', '--count', dest='count', help="Stop after sending count packets", type=int)
     # 是否以RESET断开连接，可以加快两端的系统回收连接
     parser.add_argument('-R', '--rst', dest='rst', action='store_true',
-                        help="Sending reset packet to close connection instead of FIN")
+                        help="Sending reset to close connection instead of FIN")
+    # 是否需要输出log日志
+    parser.add_argument('-l', '--log', dest='log', action='store_true',
+                        help="Set to write log file to disk")
     # 连接的目标主机
-    parser.add_argument('dst_host', nargs=1, action='store')
+    parser.add_argument('dst_host', nargs=1, action='store',help='Target host or IP')
     # 连接的目标端口
-    parser.add_argument('dst_port', nargs=1, action="store", type=int)
+    parser.add_argument('dst_port', nargs=1, action="store", type=int,help='Target port')
 
     return parser.parse_args()
 
@@ -249,30 +252,36 @@ if __name__ == '__main__':
     result = ResultBucket(args.dst_host[0], args.dst_port[0])
 
     # 设置输出的日志格式
-    console_formatter = logging.Formatter('%(message)s')
+    console_formatter = logging.Formatter('[%(asctime)s] %(message)s')
     file_formatter = logging.Formatter('%(levelname)s: %(asctime)s - %(filename)s[line:%(lineno)d] -  %(message)s')
 
     # 设置输出到屏幕的handler
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(console_formatter)
 
-    # 设置输出到文件的handler
-    file_handler = logging.handlers.RotatingFileHandler(
-        'tcpping2_' + args.dst_host[0] + '_' + str(args.dst_port[0]) + '.log', mode='w',
-        maxBytes=10*1024*1024, backupCount=5)
-    file_handler.setFormatter(file_formatter)
-
     # 创建logging
     mylogger = logging.getLogger('tcpping2')
     mylogger.setLevel(logging.INFO)
-    # 加入两个handler
+
+    # 加入handler
     mylogger.addHandler(console_handler)
-    mylogger.addHandler(file_handler)
+
+    # 判断一下是否需要打log文件
+    if args.log:
+        # 设置输出到文件的handler
+        file_handler = logging.handlers.RotatingFileHandler(
+            'tcpping2_' + args.dst_host[0] + '_' + str(args.dst_port[0]) + '.log', mode='w',
+            maxBytes=10*1024*1024, backupCount=5)
+        file_handler.setFormatter(file_formatter)
+        mylogger.addHandler(file_handler)
+
+
+
 
     initial(args)
     if judge_args(args):
-        go(args.dst_host[0], args.dst_port[0], timeout=args.timeout if args.timeout else 10,
-           interval=args.interval if args.interval else 3,
+        go(args.dst_host[0], args.dst_port[0], timeout=args.timeout if args.timeout else 5,
+           interval=args.interval if args.interval else 2,
            src_host=args.src_host if args.src_host else None, src_port=args.src_port if args.src_port else 0,
            src_rotate_port=args.src_rotate_port if args.src_rotate_port else None, rst=args.rst if args.rst else None,
            count=args.count if args.count else None)
