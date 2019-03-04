@@ -4,7 +4,7 @@
 3. 支持以FIN和RESET方式断开连接
 4. 默认情况下和linux下的ping类似，会持续的进行连接，可以通过`-c`参数来制定连接的次数
 5. 同步输出日志文件，方便关闭程序后查看历史连接情况
-6. 还支持一些额外的参数，如`-i`可以调节连接的间隔
+6. 还支持一些额外的参数，如`-i`可以调节连接的间隔，`-D`可以设置延迟发送FIN或RST包
 
 # 脚本会做的事情
 1. 以给定的参数构建五元组，使用TCP去连接目标
@@ -30,39 +30,6 @@
 
 ## 查看帮助
 `python tcpping2.py -h`
-
-# usage
-
-```
-usage: tcpping2 [-h] [-H SRC_HOST] [-P SRC_PORT] [-L SRC_ROTATE_PORT]
-                [-i INTERVAL] [-t TIMEOUT] [-c COUNT] [-R]
-                dst_host dst_port
-
-A tiny tool to connect target using TCP Connection. Version:0.1.0
-
-positional arguments:
-  dst_host
-  dst_port
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -H SRC_HOST, --src-host SRC_HOST
-                        set local IP
-  -P SRC_PORT, --src-port SRC_PORT
-                        set local port
-  -L SRC_ROTATE_PORT, --src-rotate-port SRC_ROTATE_PORT
-                        set local port(rotate)
-  -i INTERVAL, --interval INTERVAL
-                        set connection interval(second)
-  -t TIMEOUT, --timeout TIMEOUT
-                        set timeout(second)
-  -c COUNT, --count COUNT
-                        Stop after sending count packets
-  -R, --rst             Sending reset packet to close connection instead of
-                        FIN
-
-examples: tcpping2.py 192.168.1.25 80
-```
 
 # github
 https://github.com/huigher/tcpping2

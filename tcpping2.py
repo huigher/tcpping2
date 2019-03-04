@@ -10,7 +10,7 @@ import logging.handlers
 import signal
 from datetime import datetime
 
-__VERSION__ = '0.2.0'
+__VERSION__ = '0.3.0'
 
 
 def current_time():
@@ -18,7 +18,7 @@ def current_time():
     return t.strftime('%Y%m%d-%H:%M:%S')
 
 
-def conn_tcp(dst_host, dst_port, timeout, src_host=None, src_port=None, rst=False):
+def conn_tcp(dst_host, dst_port, timeout, src_host=None, src_port=None, rst=False,delay_close_second=0):
     """
     open a tcp connection to host:port
     return conn time,close time and error(if exist)
@@ -50,6 +50,8 @@ def conn_tcp(dst_host, dst_port, timeout, src_host=None, src_port=None, rst=Fals
         s.connect((dst_host, int(dst_port)))
         local_addr = s.getsockname()
         t2 = time.time()
+        # 延迟指定的秒数关闭
+        time.sleep(delay_close_second)
         s.close()
         t3 = time.time()
     except Exception, e:
@@ -58,6 +60,7 @@ def conn_tcp(dst_host, dst_port, timeout, src_host=None, src_port=None, rst=Fals
         te = time.time()
     finally:
         try:
+            # finally块中就不延迟关闭了
             s.close()
         except Exception, e2:
             print e2
@@ -93,7 +96,7 @@ def judge_args(argument):
         return True
 
 
-def go(dst_host, dst_port, timeout, interval, src_host=None, src_port=None, count=None, src_rotate_port=None, rst=False,log_to_file=False
+def go(dst_host, dst_port, timeout, interval, src_host=None, src_port=None, src_rotate_port=None, rst=False,count=None,delay_close_second=0
        ):
     error_flag = False
     if src_rotate_port:
@@ -101,7 +104,7 @@ def go(dst_host, dst_port, timeout, interval, src_host=None, src_port=None, coun
 
     while judge_count(count):
         (conn_time, close_time, err, local_addr) = conn_tcp(dst_host, dst_port, timeout=timeout, src_host=src_host,
-                                                            src_port=src_port, rst=rst)
+                                                            src_port=src_port, rst=rst,delay_close_second=delay_close_second)
         result.put(conn_time, True if len(str(err)) == 0 else False)
         # 初始化存放输出信息的列表
         output = list()
@@ -187,6 +190,9 @@ def getargs():
     # 是否需要输出log日志
     parser.add_argument('-l', '--log', dest='log', action='store_true',
                         help="Set to write log file to disk")
+    # 是否需要延迟关闭已建立的连接，用来排查三次握手最后一个ACK丢包的场景
+    parser.add_argument('-D', '--delay-close', dest='delay_close_second',
+                        help="Delay specified number of seconds before send FIN or RST",type=int)
     # 连接的目标主机
     parser.add_argument('dst_host', nargs=1, action='store',help='Target host or IP')
     # 连接的目标端口
@@ -284,7 +290,7 @@ if __name__ == '__main__':
            interval=args.interval if args.interval else 2,
            src_host=args.src_host if args.src_host else None, src_port=args.src_port if args.src_port else 0,
            src_rotate_port=args.src_rotate_port if args.src_rotate_port else None, rst=args.rst if args.rst else None,
-           count=args.count if args.count else None)
+           count=args.count if args.count else None,delay_close_second=args.delay_close_second if args.delay_close_second else 0)
         print result.get_statistics()
     else:
         pass
