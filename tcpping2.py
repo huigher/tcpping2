@@ -1,5 +1,6 @@
 #!/usr/bin/python
 # encoding: utf-8
+# Author:huigher@126.com
 
 import argparse
 import time
@@ -10,7 +11,7 @@ import logging.handlers
 import signal
 from datetime import datetime
 
-__VERSION__ = '0.3.0'
+__VERSION__ = '0.3.1'
 
 
 def current_time():
@@ -18,7 +19,7 @@ def current_time():
     return t.strftime('%Y%m%d-%H:%M:%S')
 
 
-def conn_tcp(dst_host, dst_port, timeout, src_host=None, src_port=None, rst=False,delay_close_second=0):
+def conn_tcp(dst_host, dst_port, timeout, src_host=None, src_port=None, rst=False, delay_close_second=0):
     """
     open a tcp connection to host:port
     return conn time,close time and error(if exist)
@@ -88,15 +89,23 @@ def judge_count(count):
 def judge_args(argument):
     # 检查本机地址和本地端口是否按规则给出
     if bool(argument.src_host) ^ (bool(argument.src_port) or bool(argument.src_rotate_port)):
-        tip = 'src_host and src_port(src_rotate_port) must be given at the same time'
-        print tip
+        tip = 'src_host and src_port(or src_rotate_port) must be given at the same time.'
         mylogger.error(tip)
         return False
     else:
         return True
 
 
-def go(dst_host, dst_port, timeout, interval, src_host=None, src_port=None, src_rotate_port=None, rst=False,count=None,delay_close_second=0
+def give_tips(argument):
+    # 提供一些友好的提示信息
+    # 如果指定的本地源端口，但是发现没有用-R参数，给出提示告知可能碰到TIME_WAIT问题
+    if bool(argument.src_port) and not bool(argument.rst):
+        tip = 'It is RECOMMENDED that -R flag should be set if you set a static local port.Or you may see an error message like "Address already in use".'
+        mylogger.warn(tip)
+
+
+def go(dst_host, dst_port, timeout, interval, src_host=None, src_port=None, src_rotate_port=None, rst=False, count=None,
+       delay_close_second=0
        ):
     error_flag = False
     if src_rotate_port:
@@ -104,7 +113,8 @@ def go(dst_host, dst_port, timeout, interval, src_host=None, src_port=None, src_
 
     while judge_count(count):
         (conn_time, close_time, err, local_addr) = conn_tcp(dst_host, dst_port, timeout=timeout, src_host=src_host,
-                                                            src_port=src_port, rst=rst,delay_close_second=delay_close_second)
+                                                            src_port=src_port, rst=rst,
+                                                            delay_close_second=delay_close_second)
         result.put(conn_time, True if len(str(err)) == 0 else False)
         # 初始化存放输出信息的列表
         output = list()
@@ -179,7 +189,8 @@ def getargs():
     # 本地源端口，自增的进行连接，一般用来地毯式的查找本地有问题的源端口
     parser.add_argument('-L', '--src-rotate-port', dest='src_rotate_port', help="Set local port(rotate)", type=int)
     # 连接间隔
-    parser.add_argument('-i', '--interval', dest='interval', help="Set connection interval(second),default==2", type=float)
+    parser.add_argument('-i', '--interval', dest='interval', help="Set connection interval(second),default==2",
+                        type=float)
     # 连接超时时间
     parser.add_argument('-t', '--timeout', dest='timeout', help="Set timeout(second),default==5", type=float)
     # 总的连接次数
@@ -192,11 +203,11 @@ def getargs():
                         help="Set to write log file to disk")
     # 是否需要延迟关闭已建立的连接，用来排查三次握手最后一个ACK丢包的场景
     parser.add_argument('-D', '--delay-close', dest='delay_close_second',
-                        help="Delay specified number of seconds before send FIN or RST",type=int)
+                        help="Delay specified number of seconds before send FIN or RST", type=int)
     # 连接的目标主机
-    parser.add_argument('dst_host', nargs=1, action='store',help='Target host or IP')
+    parser.add_argument('dst_host', nargs=1, action='store', help='Target host or IP')
     # 连接的目标端口
-    parser.add_argument('dst_port', nargs=1, action="store", type=int,help='Target port')
+    parser.add_argument('dst_port', nargs=1, action="store", type=int, help='Target port')
 
     return parser.parse_args()
 
@@ -238,7 +249,7 @@ class ResultBucket:
 
     def get_statistics(self):
         format_string = """--- {dst_host}:{dst_port} tcpping statistics ---
-{total_count} packets transmitted, {ok_count} connected, {error_rate}% connection failed
+{total_count} connection(s) attempted, {ok_count} connected, {error_rate}% failed
 min/avg/max = {min_time}/{avg_time}/{max_time} ms"""
 
         format_dict = dict()
@@ -277,20 +288,19 @@ if __name__ == '__main__':
         # 设置输出到文件的handler
         file_handler = logging.handlers.RotatingFileHandler(
             'tcpping2_' + args.dst_host[0] + '_' + str(args.dst_port[0]) + '.log', mode='w',
-            maxBytes=10*1024*1024, backupCount=5)
+            maxBytes=10 * 1024 * 1024, backupCount=5)
         file_handler.setFormatter(file_formatter)
         mylogger.addHandler(file_handler)
 
-
-
-
     initial(args)
     if judge_args(args):
+        give_tips(args)
         go(args.dst_host[0], args.dst_port[0], timeout=args.timeout if args.timeout else 5,
            interval=args.interval if args.interval else 2,
            src_host=args.src_host if args.src_host else None, src_port=args.src_port if args.src_port else 0,
            src_rotate_port=args.src_rotate_port if args.src_rotate_port else None, rst=args.rst if args.rst else None,
-           count=args.count if args.count else None,delay_close_second=args.delay_close_second if args.delay_close_second else 0)
+           count=args.count if args.count else None,
+           delay_close_second=args.delay_close_second if args.delay_close_second else 0)
         print result.get_statistics()
     else:
         pass
