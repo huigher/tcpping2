@@ -19,7 +19,7 @@ def current_time():
     return t.strftime('%Y%m%d-%H:%M:%S')
 
 
-def conn_tcp(dst_host, dst_port, timeout, src_host=None, src_port=None, rst=False, delay_close_second=0):
+def conn_tcp(dst_host, dst_port, timeout, src_host=None, src_port=None, rst=False, reuse=False, delay_close_second=0):
     """
     open a tcp connection to host:port
     return conn time,close time and error(if exist)
@@ -43,8 +43,10 @@ def conn_tcp(dst_host, dst_port, timeout, src_host=None, src_port=None, rst=Fals
         if rst:
             s.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER,
                          struct.pack('ii', l_onoff, l_linger))
-        if src_host and src_port and src_port < 65536:
+        if reuse:
             s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        if src_host and src_port and src_port < 65536:
+            # s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             socket.socket.bind(s, (src_host, int(src_port)))
         t1 = time.time()
         s.settimeout(timeout)
@@ -104,7 +106,8 @@ def give_tips(argument):
         mylogger.warn(tip)
 
 
-def go(dst_host, dst_port, timeout, interval, src_host=None, src_port=None, src_rotate_port=None, rst=False, count=None,
+def go(dst_host, dst_port, timeout, interval, src_host=None, src_port=None, src_rotate_port=None, rst=False,
+       reuse=False, count=None,
        delay_close_second=0
        ):
     error_flag = False
@@ -113,7 +116,7 @@ def go(dst_host, dst_port, timeout, interval, src_host=None, src_port=None, src_
 
     while judge_count(count):
         (conn_time, close_time, err, local_addr) = conn_tcp(dst_host, dst_port, timeout=timeout, src_host=src_host,
-                                                            src_port=src_port, rst=rst,
+                                                            src_port=src_port, rst=rst, reuse=reuse,
                                                             delay_close_second=delay_close_second)
         result.put(conn_time, True if len(str(err)) == 0 else False)
         # 初始化存放输出信息的列表
@@ -147,7 +150,6 @@ def go(dst_host, dst_port, timeout, interval, src_host=None, src_port=None, src_
             src_port += 1
         if src_port >= 65536:
             tip_reach_65535 = 'Local port reach 65535,reset src port to 1024.'
-            print tip_reach_65535
             mylogger.warning(tip_reach_65535)
             src_port = 1024
 
@@ -175,35 +177,33 @@ def get_version():
 
 
 def getargs():
-    tail_str = """examples:
-    tcpping2.py 192.168.1.25 80"""
     parser = argparse.ArgumentParser(
-        prog='tcpping2',
-        description='A tiny tool to connect target using TCP Connection. Version:' + __VERSION__,
-        epilog=tail_str)
+        description='A tiny tool to connect target using TCP Connection. Version:')
 
     # 本地IP地址
     parser.add_argument('-H', '--src-host', dest='src_host', help='Set local IP', type=str)
     # 本地源端口
-    parser.add_argument('-P', '--src-port', dest='src_port', help="Set local port", type=int)
+    parser.add_argument('-P', '--src-port', dest='src_port', help="Set local port", type=int, default=0)
     # 本地源端口，自增的进行连接，一般用来地毯式的查找本地有问题的源端口
     parser.add_argument('-L', '--src-rotate-port', dest='src_rotate_port', help="Set local port(rotate)", type=int)
     # 连接间隔
-    parser.add_argument('-i', '--interval', dest='interval', help="Set connection interval(second),default==2",
-                        type=float)
+    parser.add_argument('-i', '--interval', dest='interval', help="Set connection interval(second),default==1",
+                        type=float, default=1)
     # 连接超时时间
-    parser.add_argument('-t', '--timeout', dest='timeout', help="Set timeout(second),default==5", type=float)
+    parser.add_argument('-t', '--timeout', dest='timeout', help="Set timeout(second),default==2", type=float, default=2)
     # 总的连接次数
     parser.add_argument('-c', '--count', dest='count', help="Stop after sending count packets", type=int)
     # 是否以RESET断开连接，可以加快两端的系统回收连接
     parser.add_argument('-R', '--rst', dest='rst', action='store_true',
                         help="Sending reset to close connection instead of FIN")
+    parser.add_argument('--reuse', dest='reuse', action='store_true',
+                        help='Set SO_REUSEADDR flag so client can resuse address and port.')
     # 是否需要输出log日志
     parser.add_argument('-l', '--log', dest='log', action='store_true',
                         help="Set to write log file to disk")
     # 是否需要延迟关闭已建立的连接，用来排查三次握手最后一个ACK丢包的场景
     parser.add_argument('-D', '--delay-close', dest='delay_close_second',
-                        help="Delay specified number of seconds before send FIN or RST", type=int)
+                        help="Delay specified number of seconds before send FIN or RST", type=int, default=0)
     # 连接的目标主机
     parser.add_argument('dst_host', nargs=1, action='store', help='Target host or IP')
     # 连接的目标端口
@@ -293,14 +293,21 @@ if __name__ == '__main__':
         mylogger.addHandler(file_handler)
 
     initial(args)
+    # 打印最开始的分隔行
+    mylogger.info('='*50)
     if judge_args(args):
         give_tips(args)
-        go(args.dst_host[0], args.dst_port[0], timeout=args.timeout if args.timeout else 5,
-           interval=args.interval if args.interval else 2,
-           src_host=args.src_host if args.src_host else None, src_port=args.src_port if args.src_port else 0,
-           src_rotate_port=args.src_rotate_port if args.src_rotate_port else None, rst=args.rst if args.rst else None,
-           count=args.count if args.count else None,
-           delay_close_second=args.delay_close_second if args.delay_close_second else 0)
-        print result.get_statistics()
+        go(args.dst_host[0],
+           args.dst_port[0],
+           timeout=args.timeout,
+           interval=args.interval,
+           src_host=args.src_host,
+           src_port=args.src_port,
+           src_rotate_port=args.src_rotate_port,
+           rst=args.rst,
+           count=args.count,
+           reuse=args.reuse,
+           delay_close_second=args.delay_close_second)
+        mylogger.info(result.get_statistics())
     else:
         pass
