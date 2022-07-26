@@ -112,7 +112,8 @@ def give_tips(argument):
     # 提供一些友好的提示信息
     # 如果指定的本地源端口，但是发现没有用-R参数，给出提示告知可能碰到TIME_WAIT问题
     if bool(argument.src_port) and not bool(argument.rst):
-        tip = 'It is RECOMMENDED that -R flag should be set if you set a static local port.Or you may see an error message like "Address already in use".'
+        tip = 'It is RECOMMENDED that -R flag should be set if a static local port is set.' \
+              'Or you may see an error message like "Address already in use".'
         mylogger.warn(tip)
 
 
