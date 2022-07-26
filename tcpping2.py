@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python2
 # encoding: utf-8
 # Author:huigher@126.com
 
@@ -9,6 +9,7 @@ import struct
 import logging
 import logging.handlers
 import signal
+import random
 from datetime import datetime
 
 __VERSION__ = '0.3.1'
@@ -89,11 +90,20 @@ def judge_count(count):
 
 
 def judge_args(argument):
+    """
+    判断一下传入的参数是否合法，对于只给定源地址的情况，自动补充一个源端口
+    :param argument: 通过agrparse解析参数得到的对象
+    :return:
+    """
     # 检查本机地址和本地端口是否按规则给出
     if bool(argument.src_host) ^ (bool(argument.src_port) or bool(argument.src_rotate_port)):
-        tip = 'src_host and src_port(or src_rotate_port) must be given at the same time.'
-        mylogger.error(tip)
-        return False
+        # 随机出一个源端口，注意这里没有校验，可能会失败（比如源端口已经被占用）
+        argument.src_port = random.randint(10000, 60000)
+        tip = 'Missing src_port or src_rotate_port. ' \
+              'A random local port will be given to connecting. ' \
+              'The random local port is:' + str(argument.src_port)
+        mylogger.warning(tip)
+        return True
     else:
         return True
 
@@ -294,7 +304,7 @@ if __name__ == '__main__':
 
     initial(args)
     # 打印最开始的分隔行
-    mylogger.info('='*50)
+    mylogger.info('=' * 50)
     if judge_args(args):
         give_tips(args)
         go(args.dst_host[0],
